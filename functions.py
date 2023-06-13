@@ -1,3 +1,7 @@
+import numpy as np
+import pandas as pd
+
+
 def av_err(dataset_1, dataset_2, dataset_3):
     """
     function has to work with 1 row at a time, such that it can loop through the data structure and average

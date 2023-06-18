@@ -37,33 +37,46 @@ def savetocsv(daframe, dipath):
     
     daframe.to_csv(dipath)
     
-def allthewayup(dataset, peakval1, peakval2, peakwidth = 150):
+def allthewayup(dataset, peak1, peak2, islarger, peakwidth = 150, iscobalt = 0):
     '''
     I want this function to take the dataset, seek the highest two values of "average", which are the counts;
-    and depending on the two peakvalues selected to make the distrinction, to establish the conversion rate;
-    from "ADC channel" to energy in electron volts (eVs).
+    it will then return a dictionary object linking the energy and bins at each peak for later consumption
     
-    It will have a quirk for the Co60 source, where the identified peaks have to be in a specific region above;
-    the 12k channel region (this is clearly where they are by comparing the data obtained with literature)
+    Params
+    -------
+    dataset: the data to be processed
+    peak1: the literature value for where the highest peak should be
+    peak2: the literature value for where the second highest peak should be
+    islarger: 0 if the second-highest peak is at a higher energy level than the first
+              1 if the second-highest peak is at a lower energy level than the first
+    peakwidth: approximate peak width(will be removed from dataset in order to find the second peak)
+    iscobalt: the cobalt sample was being very difficult; we need to look in the >12k bin range for it
+              put 1 for this if you are assessing cobalt
+    
+    
+    Returns
+    -------
+    dictionary object
+    
     '''
     df_sort = dataset.sort_values(by=['average'], 
-                              ascending=False, inplace=False)[['ADC channel', 'average', 'error']]
-    
-    # we first find the largest peak
-    dp1 = df_sort.iloc[0]
-    print(dp1)
-    
-    # we then want to remove the peak already found
-    dp2 = df_sort[df_sort['ADC channel'] > peakwidth].iloc[0]
-    print(dp2)
-    
-    # now we can find the ratio of conversion
-    # i.e. this amount is how many eVs one channel is equivalent to
-    ratio = (peakval2 - peakval1)/(dp2['ADC channel'] - dp1['ADC channel'])
-    print(ratio)
-    
-    # all we are left to do now is multiply each channel value by this ratio and BAM!
-    datasetc = dataset.copy()
-    datasetc['energy'] = datasetc['ADC channel'].apply(lambda x: x*ratio)
+                              ascending=False, inplace=False)[['ADC channel']]
+    if iscobalt == 1:
+        dp1 = df_sort[df_sort['ADC channel']> 12000].iloc[0]
         
-    return datasetc
+        dp2 = df_sort[df_sort['ADC channel'] > peakwidth+12000].iloc[0]
+    
+    elif iscobalt == 0:
+        
+        dp1 = df_sort.iloc[0]
+    
+        if islarger == 0:
+            dp2 = df_sort[df_sort['ADC channel'] > peakwidth].iloc[0]
+        
+        elif islarger == 1:
+            dp2 = df_sort[df_sort['ADC channel'] < peakwidth].iloc[0]
+    
+    my_dict = {'peak1': {'energy': peak1, 'channel':dp1[0]}, 'peak2':{'energy': peak2, 'channel':dp2[0]}}
+    
+    
+    return my_dict
